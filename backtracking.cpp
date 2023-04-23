@@ -1,48 +1,48 @@
 #include <bits/stdc++.h>
 using namespace std;
 int a, b, c, d, e, f;
-int n, m, k;
+int N, M, K;
 int **s, **g, **h, **p, **q;
 int *t;
 void print_solution();
-void update_h(int nn, int idx);
-void update_p(int nn, int idx);
-void restore_h(int nn, int idx);
-void restore_p(int nn, int idx);
-int calc();
+void update_h(int val, int idx);
+void update_p(int val, int idx);
+void restore_h(int val, int idx);
+void restore_p(int val, int idx);
+int calc_score();
 bool check(int N);
 void input();
 void free_arr();
-void Try(int N)
+void Try(int n)
 // Try to fill p and h 2D matrix to optimize the target function, only check for constraints when the matrixes are fully populated;
 {
-	for (int i = 0; i < k; i++)
+	for (int i = 0; i < K; i++)
 	{
 		// Assign students to councils
-		if (N < n)
+		if (n < N)
 		{
-			if (check(N))
+			if (check(n))
 			{
-				update_h(N, i);
-				Try(N + 1);
-				restore_h(N, i);
+				update_h(n, i);
+				Try(n + 1);
+				restore_h(n, i);
 			}
 		}
 		else
 		{
 			// Assign teachers to councils
-			if (check(N))
+			if (check(n))
 			{
-				if (N == n + m)
+				if (n == N + M)
 				{
 					print_solution();
-					cout << "value  is: " << calc() << endl;
+					cout << "value  is: " << calc_score() << endl;
 				}
 				else
 				{
-					update_p(N - n, i);
-					Try(N + 1);
-					restore_p(N - n, i);
+					update_p(n - N, i);
+					Try(n + 1);
+					restore_p(n - N, i);
 				}
 			}
 		}
@@ -57,64 +57,64 @@ int main()
 
 void print_solution()
 {
-	cout << n << endl;
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < k; j++)
-			if (h[i][j] == 1)
-				cout << j + 1 << " ";
+	cout << N << endl;
+	for (int i = 0; i < N; i++)
+		for (int k = 0; k < K; k++)
+			if (h[i][k] == 1)
+				cout << k + 1 << " ";
 	cout << endl;
-	cout << m << endl;
-	for (int i = 0; i < m; i++)
-		for (int j = 0; j < k; j++)
-			if (p[i][j] == 1)
-				cout << j + 1 << " ";
+	cout << M << endl;
+	for (int i = 0; i < M; i++)
+		for (int k = 0; k < K; k++)
+			if (p[i][k] == 1)
+				cout << k + 1 << " ";
 	cout << endl;
 }
 
-void update_p(int nn, int idx)
+void update_p(int val, int idx)
 {
-	p[nn][idx] = 1;
+	p[val][idx] = 1;
 }
-void update_h(int nn, int idx)
+void update_h(int val, int idx)
 {
-	h[nn][idx] = 1;
+	h[val][idx] = 1;
 }
-void restore_p(int nn, int idx)
+void restore_p(int val, int idx)
 {
-	p[nn][idx] = 0;
+	p[val][idx] = 0;
 }
-void restore_h(int nn, int idx)
+void restore_h(int val, int idx)
 {
-	h[nn][idx] = 0;
+	h[val][idx] = 0;
 }
-int calc()
+int calc_score()
 {
 	int sum = 0;
-	for (int i = 0; i < n; i++)
+	for (int i = 0; i < N; i++)
 	{
-		for (int j = 0; j < m; j++)
+		for (int j = 0; j < M; j++)
 		{
-			for (int z = 0; z < k; z++)
+			for (int k = 0; k < K; k++)
 			{
-				sum += g[i][j] * h[i][z] * p[j][z];
+				sum += g[i][j] * h[i][k] * p[j][k];
 			}
 		}
-		for (int l = 0; l < n; l++)
+		for (int n = i; n < N; n++)
 		{
-			for (int k1 = 0; k1 < k; k1++)
+			for (int k = 0; k < K; k++)
 			{
-				sum += s[i][l] * h[i][k1] * h[l][k1];
+				sum += s[i][n] * h[i][k] * h[n][k];
 			}
 		}
 	}
 	return sum;
 }
-bool check(int N)
+bool check(int n)
 {
-	for (int i = 0; i < n; i++)
+	for (int i = 0; i < N; i++)
 	{
 		int teacher_count = 0;
-		for (int j = k; j < m; j++)
+		for (int j = 0; j < M; j++)
 		{
 			teacher_count += q[i][j];
 		}
@@ -124,55 +124,81 @@ bool check(int N)
 			return false;
 		};
 	}
-	// Only check for other conditions when all students and teachers are assigned
-	if (N == n + m)
+	for (int j = 0; j < M; j++)
 	{
-		for (int i = 0; i < k; i++)
+		int teacher_count = 0;
+		for (int k = 0; k < K; k++)
+		{
+			teacher_count += p[j][k];
+		}
+		if (teacher_count > 1)
+		{
+			// cout << "Teacher is in more than 1 council!";
+			return false;
+		}
+	}
+	for (int i = 0; i < N; i++)
+	{
+		int thesis_count = 0;
+		for (int k = 0; k < K; k++)
+		{
+			thesis_count += h[i][k];
+		}
+		if (thesis_count > 1)
+		{
+			// cout << "Thesis is in more than 1 council";
+			return false;
+		}
+	}
+	// Only check for other conditions when all students and teachers are assigned value
+	if (n == N + M)
+	{
+		for (int k = 0; k < K; k++)
 		{
 			int thesis_count = 0;
 			int teacher_count = 0;
-			for (int j = 0; j < n; j++)
+			for (int i = 0; i < N; i++)
 			{
-				thesis_count += h[j][i];
+				thesis_count += h[i][k];
 			}
-			for (int z = 0; z < m; z++)
+			for (int j = 0; j < M; j++)
 			{
-				teacher_count += p[z][i];
+				teacher_count += p[j][k];
 			}
-			if (thesis_count > b || thesis_count < a)
+			if (thesis_count >= b || thesis_count <= a)
 			{
 				// cout << "Thesis count not in range" << endl;
 				return false;
 			}
-			if (teacher_count > d || teacher_count < c)
+			if (teacher_count >= d || teacher_count <= c)
 			{
 				// cout << "Teacher in a council is not in range" << endl;
 				return false;
 			}
 		}
-		for (int i = 0; i < n; i++)
+		for (int i = 0; i < N; i++)
 		{
-			for (int j = 0; j < k; j++)
+			for (int k = 0; k < K; k++)
 			{
-				if (h[i][j] + p[t[i] - 1][j] > 1)
+				if (h[i][k] * p[t[i] - 1][k] != 0)
 				{
 					// cout << "Teacher should not be in the same council as the thesis" << endl;
 					return false;
 				}
 			}
 		}
-		for (int i = 0; i < n; i++)
+		for (int i = 0; i < N; i++)
 		{
-			for (int j = 0; j < m; j++)
+			for (int j = 0; j < M; j++)
 			{
-				for (int z = 0; z < k; z++)
+				for (int k = 0; k < K; k++)
 				{
-					if (s[i][j] < e * h[i][z] * h[j][z] && i != j)
+					if (s[i][j] < e * h[i][k] * h[j][k] && i != j)
 					{
 						// cout << "Similarity of thesis in a council is not enough!" << endl;
 						return false;
 					}
-					if (g[i][j] < f * p[j][z] * h[i][z])
+					if (g[i][j] < f * p[j][k] * h[i][k])
 					{
 						// cout << "Similarity of thesis and teacher in a council is not enough!" << endl;
 						return false;
@@ -188,64 +214,64 @@ void input()
 {
 	std::fstream myfile("input.txt", ios_base::in);
 
-	myfile >> n >> m >> k;
+	myfile >> N >> M >> K;
 	myfile >> a >> b >> c >> d >> e >> f;
-	s = new int *[n];
-	for (int i = 0; i < n; i++)
+	s = new int *[N];
+	for (int i = 0; i < N; i++)
 	{
-		s[i] = new int[n];
-		for (int j = 0; j < n; j++)
+		s[i] = new int[N];
+		for (int j = 0; j < N; j++)
 		{
 			myfile >> s[i][j];
 		}
 	}
-	g = new int *[n];
-	for (int i = 0; i < n; i++)
+	g = new int *[N];
+	for (int i = 0; i < N; i++)
 	{
-		g[i] = new int[m];
-		for (int j = 0; j < m; j++)
+		g[i] = new int[M];
+		for (int j = 0; j < M; j++)
 		{
 			myfile >> g[i][j];
 		}
 	}
-	t = new int[n];
-	for (int i = 0; i < n; i++)
+	t = new int[N];
+	for (int i = 0; i < N; i++)
 	{
 		myfile >> t[i];
 	}
 
-	q = new int *[n];
-	p = new int *[m];
-	h = new int *[n];
-	for (int i = 0; i < n; i++)
+	q = new int *[N];
+	p = new int *[M];
+	h = new int *[N];
+	for (int i = 0; i < N; i++)
 	{
-		q[i] = new int[m];
-		h[i] = new int[k];
-		for (int j = 0; j < m; j++)
+		q[i] = new int[M];
+		h[i] = new int[K];
+		for (int j = 0; j < M; j++)
 		{
 			q[i][j] = 0;
 		}
-		for (int z = 0; z < k; z++)
+		for (int z = 0; z < K; z++)
 		{
 			h[i][z] = 0;
 		}
 	}
-	for (int i = 0; i < m; i++)
+	for (int i = 0; i < M; i++)
 	{
-		p[i] = new int[k];
-		for (int j = 0; j < k; j++)
+		p[i] = new int[K];
+		for (int j = 0; j < K; j++)
 		{
 			p[i][j] = 0;
 		}
 	}
-	for (int i = 0; i < n; i++)
+	for (int i = 0; i < N; i++)
 	{
 		q[i][t[i] - 1] = 1;
 	}
 }
 void free_arr()
 {
-	for (int i = 0; i < n; i++)
+	for (int i = 0; i < N; i++)
 	{
 		delete[] s[i];
 		delete[] g[i];
@@ -256,7 +282,7 @@ void free_arr()
 	delete[] g;
 	delete[] q;
 	delete[] h;
-	for (int i = 0; i < m; i++)
+	for (int i = 0; i < M; i++)
 	{
 		delete[] p[i];
 	}
