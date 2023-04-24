@@ -4,11 +4,16 @@ int a, b, c, d, e, f;
 int N, M, K;
 int **s, **g, **h, **p, **q;
 int *t;
+int max_score = 0;
+int **student_solution, **teacher_solution;
 void print_solution();
 void update_h(int val, int idx);
 void update_p(int val, int idx);
 void restore_h(int val, int idx);
 void restore_p(int val, int idx);
+void copy2DArray(int **sourceArray, int **destArray, int rows, int cols);
+int **allocate2D(int rows, int cols);
+void update_solution();
 int calc_score();
 bool check(int N);
 void input();
@@ -35,8 +40,11 @@ void Try(int n)
 			{
 				if (n == N + M)
 				{
-					print_solution();
-					cout << "value  is: " << calc_score() << endl;
+					if (calc_score() > max_score)
+					{
+						max_score = calc_score();
+						update_solution();
+					}
 				}
 				else
 				{
@@ -52,6 +60,7 @@ int main()
 {
 	input();
 	Try(0);
+	print_solution();
 	free_arr();
 }
 
@@ -60,13 +69,13 @@ void print_solution()
 	cout << N << endl;
 	for (int i = 0; i < N; i++)
 		for (int k = 0; k < K; k++)
-			if (h[i][k] == 1)
+			if (student_solution[i][k] == 1)
 				cout << k + 1 << " ";
 	cout << endl;
 	cout << M << endl;
 	for (int i = 0; i < M; i++)
 		for (int k = 0; k < K; k++)
-			if (p[i][k] == 1)
+			if (teacher_solution[i][k] == 1)
 				cout << k + 1 << " ";
 	cout << endl;
 }
@@ -165,12 +174,12 @@ bool check(int n)
 			{
 				teacher_count += p[j][k];
 			}
-			if (thesis_count >= b || thesis_count <= a)
+			if (thesis_count > b || thesis_count < a)
 			{
 				// cout << "Thesis count not in range" << endl;
 				return false;
 			}
-			if (teacher_count >= d || teacher_count <= c)
+			if (teacher_count > d || teacher_count < c)
 			{
 				// cout << "Teacher in a council is not in range" << endl;
 				return false;
@@ -210,43 +219,45 @@ bool check(int n)
 	// cout << "Pass all constraints!!!" << N << endl;
 	return true;
 }
+void update_solution()
+{
+	copy2DArray(p, teacher_solution, M, K);
+	copy2DArray(h, student_solution, N, K);
+}
 void input()
 {
 	std::fstream myfile("input.txt", ios_base::in);
 
 	myfile >> N >> M >> K;
 	myfile >> a >> b >> c >> d >> e >> f;
-	s = new int *[N];
+	s = allocate2D(N, N);
+	g = allocate2D(N, M);
+	t = new int[N];
+	q = allocate2D(N, M);
+	p = allocate2D(M, K);
+	h = allocate2D(N, K);
+	student_solution = allocate2D(N, K);
+	teacher_solution = allocate2D(M, K);
 	for (int i = 0; i < N; i++)
 	{
-		s[i] = new int[N];
 		for (int j = 0; j < N; j++)
 		{
 			myfile >> s[i][j];
 		}
 	}
-	g = new int *[N];
 	for (int i = 0; i < N; i++)
 	{
-		g[i] = new int[M];
 		for (int j = 0; j < M; j++)
 		{
 			myfile >> g[i][j];
 		}
 	}
-	t = new int[N];
 	for (int i = 0; i < N; i++)
 	{
 		myfile >> t[i];
 	}
-
-	q = new int *[N];
-	p = new int *[M];
-	h = new int *[N];
 	for (int i = 0; i < N; i++)
 	{
-		q[i] = new int[M];
-		h[i] = new int[K];
 		for (int j = 0; j < M; j++)
 		{
 			q[i][j] = 0;
@@ -258,7 +269,6 @@ void input()
 	}
 	for (int i = 0; i < M; i++)
 	{
-		p[i] = new int[K];
 		for (int j = 0; j < K; j++)
 		{
 			p[i][j] = 0;
@@ -288,4 +298,24 @@ void free_arr()
 	}
 	delete[] p;
 	delete[] t;
+}
+void copy2DArray(int **sourceArray, int **destArray, int rows, int cols)
+{
+
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			destArray[i][j] = sourceArray[i][j];
+		}
+	}
+}
+int **allocate2D(int rows, int cols)
+{
+	int **arr = new int *[rows];
+	for (int i = 0; i < rows; i++)
+	{
+		arr[i] = new int[cols];
+	}
+	return arr;
 }
