@@ -1,10 +1,6 @@
-from ortools.linear_solver import pywraplp
+from ortools.sat.python import cp_model
 
-solver = pywraplp.Solver.CreateSolver("SCIP")
-if not solver:
-    pass
-
-q, p, h = {}, {}, {}
+model = cp_model.CpModel()
 a, b, c, d, e, f = 2, 4, 1, 3, 1, 1
 num_thesises, num_teachers, num_councils = 6, 4, 2
 
@@ -28,76 +24,120 @@ g = [
     [5, 3, 4, 5],
 ]
 
-# Thesis i has t[i] as an advisor
-t = [1, 3, 4, 2, 2, 3]
+q = [
+    [1, 0, 0, 0],  # Thesis 0 has advisor 1
+    [0, 0, 1, 0],  # Thesis 1 has advisor 3
+    [0, 0, 0, 1],  # Thesis 2 has advisor 4
+    [0, 1, 0, 0],  # Thesis 3 has advisor 2
+    [0, 1, 0, 0],  # Thesis 4 has advisor 2
+    [0, 0, 1, 0],  # Thesis 5 has advisor 3
+]
+# Binary integer variables
+p, h = [], []
 for i in range(num_thesises):
-    for j in range(num_teachers):
-        q[i, j] = solver.IntVar(0, 1, "")
-for i in range(num_thesises):
+    t = []
     for j in range(num_councils):
-        h[i, j] = solver.IntVar(0, 1, "")
+        t.append(model.NewBoolVar(f"p_{i}_{j}"))
+    h.append(t)
 for i in range(num_teachers):
+    t = []
     for j in range(num_councils):
-        p[i, j] = solver.IntVar(0, 1, "")
+        t.append(model.NewBoolVar(f"h_{i}_{j}"))
+    p.append(t)
 # Each thesis is assigned to exactly 1 council
-# Each thesis is assigned to exactly 1 teacher
 for i in range(num_thesises):
-    solver.Add(solver.Sum([h[i, j] for j in range(num_councils)]) <= 1)
-    solver.Add(solver.Sum([q[i, j] for j in range(num_teachers)]) <= 1)
-
+    model.Add(sum(h[i]) == 1)
 # Each teacher is assigned to exactly 1 council
 for i in range(num_teachers):
-    solver.Add(solver.Sum([p[i, j] for j in range(num_councils)]) <= 1)
+    model.Add(sum(p[i]) == 1)
+
 # Amount of thesises assigned to each council is in range [a, b]
 for i in range(num_councils):
-    solver.Add(solver.Sum([h[j, i] for j in range(num_thesises)]) >= a)
-    solver.Add(solver.Sum([h[j, i] for j in range(num_thesises)]) <= b)
-# Amount of teacher assigned to each council is in range [c, d]
+    model.Add(a <= sum(h[j][i] for j in range(num_thesises)))
+    model.Add(sum(h[j][i] for j in range(num_thesises)) <= b)
+# Amount of teachers assigned to each council is in range [c, d]
 for i in range(num_councils):
-    solver.Add(solver.Sum([p[j, i] for j in range(num_teachers)]) >= c)
-    solver.Add(solver.Sum([p[j, i] for j in range(num_teachers)]) <= d)
+    model.Add(c <= sum(p[j][i] for j in range(num_teachers)))
+    model.Add(sum(p[j][i] for j in range(num_teachers)) <= d)
 # Teacher isn't allowed to be assigned to council where his thesis is
 for i in range(num_thesises):
     for j in range(num_teachers):
         for k in range(num_councils):
-            solver.Add(p[t[i] - 1, k] + h[i, k] <= 1)
+            model.Add(q[i][j] * p[j][k] + h[i][k] <= 1)
 # Similarity score between each pair of thesis in each council is at least e
-for k in range(num_councils):
-    for i in range(num_thesises):
-        for j in range(num_thesises):
-            solver.Add(s[i][j] >= e * h[i, k] * h[j, k])
+# s[i][j] >= e * h[i, k] * h[j, k]
+
+for i in range(num_councils):
+    for j in range(num_thesises):
+        for k in range(j + 1, num_thesises):
+            j_in_i = model.NewBoolVar(f"j_in_i")
+            k_in_i = model.NewBoolVar(f"k_in_i")
+            both_in_i = model.NewBoolVar(f"both_in_i")
+            model.Add(h[j][i] == 1).OnlyEnforceIf(j_in_i)
+            model.Add(h[k][i] == 1).OnlyEnforceIf(k_in_i)
+            model.Add(both_in_i == 1).OnlyEnforceIf([j_in_i, k_in_i])
+            model.Add(s[j][k] >= e * both_in_i)
+
 # Similarity score between each pair of thesis and teacher in each council is at least f
-for k in range(num_councils):
-    for i in range(num_thesises):
-        for j in range(num_teachers):
-            solver.Add(g[i][j] >= f * h[i, k] * p[j, k])
+# g[i][j] >= f * h[i, k] * p[j, k]
+for i in range(num_councils):
+    for j in range(num_thesises):
+        for k in range(num_teachers):
+            j_in_i = model.NewBoolVar(f"j_in_i")
+            k_in_i = model.NewBoolVar(f"k_in_i")
+            both_in_i = model.NewBoolVar(f"both_in_i")
+            model.Add(h[j][i] == 1).OnlyEnforceIf(j_in_i)
+            model.Add(p[k][i] == 1).OnlyEnforceIf(k_in_i)
+            model.Add(both_in_i == 1).OnlyEnforceIf([j_in_i, k_in_i])
+            model.Add(g[j][k] >= f * both_in_i)
 # Objective function
 # Maximize sum of similarity score between each pair of thesis in each council, and sum of similarity score between each pair of thesis and teacher in each council
-solver.Maximize(
-    solver.Sum(
-        [
-            solver.Sum([s[i][j] * h[i, k] * h[j, k] for i in range(num_thesises)])
-            for j in range(num_thesises)
-        ]
-        for k in range(num_councils)
-    )
-    + solver.Sum(
-        [
-            solver.Sum([g[i][j] * h[i, k] * p[j, k] for i in range(num_thesises)])
-            for j in range(num_teachers)
-        ]
-        for k in range(num_councils)
-    )
-)
-status = solver.Solve()
-if status == pywraplp.Solver.OPTIMAL:
-    for i in range(num_thesises):
-        for j in range(num_councils):
-            if h[i, j].solution_value() == 1:
-                print("Thesis ", i + 1, " is assigned to council ", j + 1)
-    for i in range(num_teachers):
-        for j in range(num_councils):
-            if p[i, j].solution_value() == 1:
-                print("Teacher ", i + 1, " is assigned to council ", j + 1)
-else:
-    print("No solution found")
+obj = []
+for i in range(num_councils):
+    for j in range(num_thesises):
+        for k in range(num_thesises):
+            if k > j:
+                j_in_i = model.NewBoolVar(f"j_in_i_{i}_{j}_{k}")
+                k_in_i = model.NewBoolVar(f"k_in_i_{i}_{j}_{k}")
+                both_in_i = model.NewBoolVar(f"both_in_i_{i}_{j}_{k}")
+                model.Add(h[j][i] == 1).OnlyEnforceIf(j_in_i)
+                model.Add(h[j][i] == 0).OnlyEnforceIf(j_in_i.Not())
+                model.Add(h[k][i] == 1).OnlyEnforceIf(k_in_i)
+                model.Add(h[k][i] == 0).OnlyEnforceIf(k_in_i.Not())
+                model.Add(both_in_i == 1).OnlyEnforceIf([j_in_i, k_in_i])
+                model.Add(both_in_i == 0).OnlyEnforceIf([j_in_i.Not(), k_in_i.Not()])
+                model.Add(both_in_i == 0).OnlyEnforceIf([j_in_i, k_in_i.Not()])
+                model.Add(both_in_i == 0).OnlyEnforceIf([j_in_i.Not(), k_in_i])
+                obj.append(s[j][k] * both_in_i)
+for i in range(num_councils):
+    for j in range(num_thesises):
+        for k in range(num_teachers):
+            j_in_i = model.NewBoolVar(f"j_in_i_{i}_{j}_{k}")
+            k_in_i = model.NewBoolVar(f"k_in_i_{i}_{j}_{k}")
+            both_in_i = model.NewBoolVar(f"both_in_i_{i}_{j}_{k}")
+            model.Add(h[j][i] == 1).OnlyEnforceIf(j_in_i)
+            model.Add(h[j][i] == 0).OnlyEnforceIf(j_in_i.Not())
+            model.Add(p[k][i] == 1).OnlyEnforceIf(k_in_i)
+            model.Add(p[k][i] == 0).OnlyEnforceIf(k_in_i.Not())
+
+            model.Add(both_in_i == 1).OnlyEnforceIf([j_in_i, k_in_i])
+            model.Add(both_in_i == 0).OnlyEnforceIf([j_in_i.Not(), k_in_i.Not()])
+            model.Add(both_in_i == 0).OnlyEnforceIf([j_in_i.Not(), k_in_i])
+            model.Add(both_in_i == 0).OnlyEnforceIf([j_in_i, k_in_i.Not()])
+            obj.append(g[j][k] * both_in_i)
+
+model.Maximize(sum(obj))
+solver = cp_model.CpSolver()
+solver.Solve(model)
+
+print("Optimal value: ", solver.ObjectiveValue())
+print()
+for i in range(num_thesises):
+    for j in range(num_councils):
+        if solver.Value(h[i][j]) == 1:
+            print(f"Thesis {i + 1} is assigned to council {j + 1}")
+print()
+for i in range(num_teachers):
+    for j in range(num_councils):
+        if solver.Value(p[i][j]) == 1:
+            print(f"Teacher {i + 1} is assigned to council {j + 1}")
