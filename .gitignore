@@ -1,2 +1,5 @@
 .vscode/
 venv/
+compiled/
+tempCodeRunnerFile.py
+__pycache__/
